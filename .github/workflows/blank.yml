@@ -1,0 +1,92 @@
+name: Build PC Virtual
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-vm:
+    name: Build Virtual PC
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
+    env:
+      VM_NAME: virtual-pc
+      VM_RAM: 4096
+      VM_CPUS: 2
+      VM_DISK: 20G
+      UBUNTU_ISO: ubuntu-24.04.3-live-server-amd64.iso
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Atualizar sistema
+        run: |
+          sudo apt-get update
+
+      - name: Instalar QEMU
+        run: |
+          sudo apt-get install -y \
+            qemu-system-x86 \
+            qemu-utils \
+            ovmf \
+            wget \
+            curl \
+            genisoimage
+
+      - name: Verificar QEMU
+        run: |
+          qemu-system-x86_64 --version
+          qemu-img --version
+
+      - name: Baixar Ubuntu ISO
+        run: |
+          wget -q \
+            "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso" \
+            -O "$UBUNTU_ISO"
+
+      - name: Criar disco virtual
+        run: |
+          qemu-img create \
+            -f qcow2 \
+            "$VM_NAME.qcow2" \
+            "$VM_DISK"
+
+      - name: Mostrar informações do disco
+        run: |
+          qemu-img info "$VM_NAME.qcow2"
+
+      - name: Preparar diretórios
+        run: |
+          mkdir -p build
+          mkdir -p output
+
+      - name: Mover imagem
+        run: |
+          cp "$VM_NAME.qcow2" "output/$VM_NAME.qcow2"
+
+      - name: Compactar imagem
+        run: |
+          tar -czf \
+            "output/$VM_NAME.tar.gz" \
+            -C output \
+            "$VM_NAME.qcow2"
+
+      - name: Upload da VM
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtual-pc
+          path: |
+            output/virtual-pc.qcow2
+            output/virtual-pc.tar.gz
+          retention-days: 7
