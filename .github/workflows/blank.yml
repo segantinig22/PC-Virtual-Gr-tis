@@ -1,0 +1,47 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Define a imagem de sistema operacional (Ubuntu 22.04 LTS)
+  config.vm.box = "ubuntu/jammy64"
+
+  # Nome da máquina virtual no VirtualBox
+  config.vm.hostname = "pc-virtual-dev"
+
+  # Configurações de Rede
+  # Encamina a porta 80 da VM para a 8080 do seu PC real
+  config.vm.network "forwarded_port", guest: 80, host: 8080
+  
+  # Cria um IP privado para acessar a VM diretamente
+  config.vm.network "private_network", ip: "192.168.56.10"
+
+  # Pasta compartilhada entre o seu PC (pasta atual) e a VM
+  config.vm.synced_folder ".", "/vagrant"
+
+  # Configurações de Hardware no VirtualBox
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "PC Virtual - Ubuntu"
+    vb.memory = "2048" # Memória RAM em MB (2 GB)
+    vb.cpus = 2        # Quantidade de núcleos de CPU
+    
+    # Habilita aceleração de áudio e interface gráfica se necessário
+    vb.gui = false     # Mude para 'true' se quiser ver a tela da VM
+  end
+
+  # Script de automação (instala programas assim que a VM liga)
+  config.vm.provision "shell", inline: <<-SHELL
+    echo "Atualizando o sistema..."
+    sudo apt-get update -y
+    sudo apt-get upgrade -y
+
+    echo "Instalando ferramentas essenciais (Git, Curl, Docker)..."
+    sudo apt-get install -y git curl build-essential
+
+    # Instalação do Docker
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    sudo usermod -aG docker vagrant
+
+    echo "Máquina virtual pronta para uso!"
+  SHELL
+end
